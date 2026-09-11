@@ -333,7 +333,7 @@ void CPopup::onUnmap() {
         return;
     }
 
-    if (PARENTLAYER && PARENTLAYER->mapped() && PARENTLAYER->m_layerSurface->m_current.keyboardInteractivity != ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_NONE) {
+    if (PARENTLAYER && PARENTLAYER->mapped() && PARENTLAYER->m_keyboardInteractivity != ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_NONE) {
         Desktop::focusState()->rawSurfaceFocus(PARENTLAYER->wlSurface()->resource());
         return;
     }
