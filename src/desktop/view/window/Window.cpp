@@ -1512,8 +1512,14 @@ void CWindow::mapWindow() {
             Fullscreen::controller()->setFullscreenMode(Fullscreen::controller()->getFullscreenWindow(m_workspace), Fullscreen::FSMODE_NONE, std::nullopt);
     }
 
-    if (!m_ruleApplicator->noFocus().valueOrDefault() && !(m_state & WINDOW_STATE_NO_INITIAL_FOCUS) && (!TRAITS.overrideRedirect || TRAITS.wantsFocus) && !workspaceSilent &&
-        !monitorSilent && (!PFORCEFOCUS || PFORCEFOCUS == m_self.lock()) && !g_pInputManager->isConstrained()) {
+    // The ANR dialog must always be able to take focus: a stay_focused hung window would
+    // otherwise hold focus hostage. Silent is only bypassed on a visible workspace so a
+    // dialog for another workspace doesn't yank the user over.
+    const bool ISANRDIALOG        = g_pANRManager && g_pANRManager->isANRDialog(m_self.lock());
+    const bool ANRDIALOGFOCUSABLE = ISANRDIALOG && m_workspace && m_workspace->visible();
+
+    if (!m_ruleApplicator->noFocus().valueOrDefault() && !(m_state & WINDOW_STATE_NO_INITIAL_FOCUS) && (!TRAITS.overrideRedirect || TRAITS.wantsFocus) &&
+        (!workspaceSilent || ANRDIALOGFOCUSABLE) && !monitorSilent && (!PFORCEFOCUS || PFORCEFOCUS == m_self.lock() || ISANRDIALOG) && !g_pInputManager->isConstrained()) {
 
         // don't steal pointer focus with X11 when buttons are held (e.g., during drags)
         // if the incoming window is an OR

@@ -159,6 +159,17 @@ bool CANRManager::isNotResponding(SP<CANRManager::SANRData> data) {
     return data->missedResponses > *PANRTHRESHOLD;
 }
 
+bool CANRManager::isANRDialog(PHLWINDOW pWindow) {
+    if (!pWindow)
+        return false;
+
+    const auto PID = pWindow->backend().pid();
+    if (PID <= 0)
+        return false;
+
+    return std::ranges::any_of(m_data, [PID](const auto& data) { return data->isRunning() && data->dialogBox->getPID() == PID; });
+}
+
 SP<CANRManager::SANRData> CANRManager::dataFor(PHLWINDOW pWindow) {
     return pWindow ? dataFor(pWindow->backend().clientID()) : nullptr;
 }

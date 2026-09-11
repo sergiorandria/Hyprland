@@ -17,6 +17,7 @@ class CANRManager {
 
     void onResponse(Desktop::View::SBackendClientID clientID);
     bool isNotResponding(PHLWINDOW pWindow);
+    bool isANRDialog(PHLWINDOW pWindow);
 
   private:
     bool                m_active = false;
