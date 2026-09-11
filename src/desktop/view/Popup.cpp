@@ -10,6 +10,7 @@
 #include "../../managers/SeatManager.hpp"
 #include "../../animation/AnimationManager.hpp"
 #include "LayerSurface.hpp"
+#include "../state/FocusState.hpp"
 #include "../../managers/input/InputManager.hpp"
 #include "../../managers/eventLoop/EventLoopManager.hpp"
 #include "../../render/Renderer.hpp"
@@ -295,11 +296,49 @@ void CPopup::onUnmap() {
         },
         nullptr);
 
-    // TODO: probably refocus, but without a motion event?
-    // const bool WASLASTFOCUS = g_pSeatManager->state.keyboardFocus == m_pWLSurface->resource() || g_pSeatManager->state.pointerFocus == m_pWLSurface->resource();
+    // If this popup held keyboard focus, hand it back to its parent. Otherwise focus is
+    // left dangling on an unmapped surface and the next input refocuses by mouse position,
+    // stealing keyboard focus to whatever happens to be under the cursor (e.g. with
+    // follow_mouse = 2 typing in a window with dropdown suggestions loses focus when the
+    // suggestions disappear). Popups owned by a seat grab are handled on grab end instead.
+    if (g_pSeatManager->m_seatGrab || !m_wlSurface || !m_wlSurface->resource())
+        return;
 
-    // if (WASLASTFOCUS)
-    //     g_pInputManager->simulateMouseMovement();
+    const auto KBFOCUS = g_pSeatManager->m_state.keyboardFocus.lock();
+    if (!KBFOCUS)
+        return;
+
+    bool wasKeyboardFocus = false;
+    m_wlSurface->resource()->breadthfirst(
+        [&](SP<CWLSurfaceResource> s, const Vector2D&, void*) {
+            if (s == KBFOCUS)
+                wasKeyboardFocus = true;
+        },
+        nullptr);
+
+    if (!wasKeyboardFocus)
+        return;
+
+    const auto PARENT       = m_parent.lock();
+    const auto PARENTWINDOW = m_windowOwner.lock();
+    const auto PARENTLAYER  = m_layerOwner.lock();
+
+    if (PARENT && PARENT->mapped() && PARENT->wlSurface() && PARENT->wlSurface()->resource()) {
+        Desktop::focusState()->rawSurfaceFocus(PARENT->wlSurface()->resource());
+        return;
+    }
+
+    if (PARENTWINDOW && PARENTWINDOW->mapped()) {
+        Desktop::focusState()->rawWindowFocus(PARENTWINDOW, Desktop::FOCUS_REASON_FFM);
+        return;
+    }
+
+    if (PARENTLAYER && PARENTLAYER->mapped() && PARENTLAYER->m_layerSurface->m_current.keyboardInteractivity != ZWLR_LAYER_SURFACE_V1_KEYBOARD_INTERACTIVITY_NONE) {
+        Desktop::focusState()->rawSurfaceFocus(PARENTLAYER->wlSurface()->resource());
+        return;
+    }
+
+    g_pInputManager->simulateMouseMovement();
 }
 
 void CPopup::onCommit(bool ignoreSiblings) {
