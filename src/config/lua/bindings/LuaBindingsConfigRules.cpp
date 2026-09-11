@@ -1209,6 +1209,45 @@ static int hlWindowRule(lua_State* L) {
         while (lua_next(L, matchIdx) != 0) {
             if (lua_type(L, -2) == LUA_TSTRING) {
                 std::string matchKey = lua_tostring(L, -2);
+
+                auto        prop = Desktop::Rule::matchPropFromString(matchKey);
+                if (!prop.has_value()) {
+                    self->addError(std::format("{}: hl.window_rule: unknown match property '{}'", sourceInfo, matchKey));
+                    lua_pop(L, 1);
+                    continue;
+                }
+
+                if (lua_istable(L, -1)) {
+                    // arrays are only meaningful for tags: all listed tags must match.
+                    if (*prop != Desktop::Rule::RULE_PROP_TAG) {
+                        self->addError(std::format("{}: hl.window_rule: match value for '{}' must be string, bool, or number", sourceInfo, matchKey));
+                        lua_pop(L, 1);
+                        continue;
+                    }
+
+                    const int                tagsIdx = lua_gettop(L);
+                    std::vector<std::string> tags;
+                    bool                     tagsOk = true;
+                    lua_pushnil(L);
+                    while (lua_next(L, tagsIdx) != 0) {
+                        if (!lua_isstring(L, -1))
+                            tagsOk = false;
+                        else
+                            tags.emplace_back(lua_tostring(L, -1));
+                        lua_pop(L, 1);
+                    }
+
+                    if (!tagsOk || tags.empty()) {
+                        self->addError(std::format("{}: hl.window_rule: match value for 'tag' must be a non-empty array of strings", sourceInfo));
+                        lua_pop(L, 1);
+                        continue;
+                    }
+
+                    rule->registerMatch(*prop, tags);
+                    lua_pop(L, 1);
+                    continue;
+                }
+
                 std::string matchVal;
                 if (lua_type(L, -1) == LUA_TBOOLEAN)
                     matchVal = lua_toboolean(L, -1) ? "true" : "false";
@@ -1221,11 +1260,7 @@ static int hlWindowRule(lua_State* L) {
                     lua_pop(L, 1);
                     continue;
                 }
-                auto prop = Desktop::Rule::matchPropFromString(matchKey);
-                if (prop.has_value())
-                    rule->registerMatch(*prop, matchVal);
-                else
-                    self->addError(std::format("{}: hl.window_rule: unknown match property '{}'", sourceInfo, matchKey));
+                rule->registerMatch(*prop, matchVal);
             }
             lua_pop(L, 1);
         }
@@ -1319,6 +1354,45 @@ static int hlLayerRule(lua_State* L) {
         while (lua_next(L, matchIdx) != 0) {
             if (lua_type(L, -2) == LUA_TSTRING) {
                 std::string matchKey = lua_tostring(L, -2);
+
+                auto        prop = Desktop::Rule::matchPropFromString(matchKey);
+                if (!prop.has_value()) {
+                    self->addError(std::format("{}: hl.layer_rule: unknown match property '{}'", sourceInfo, matchKey));
+                    lua_pop(L, 1);
+                    continue;
+                }
+
+                if (lua_istable(L, -1)) {
+                    // arrays are only meaningful for tags: all listed tags must match.
+                    if (*prop != Desktop::Rule::RULE_PROP_TAG) {
+                        self->addError(std::format("{}: hl.layer_rule: match value for '{}' must be string or bool", sourceInfo, matchKey));
+                        lua_pop(L, 1);
+                        continue;
+                    }
+
+                    const int                tagsIdx = lua_gettop(L);
+                    std::vector<std::string> tags;
+                    bool                     tagsOk = true;
+                    lua_pushnil(L);
+                    while (lua_next(L, tagsIdx) != 0) {
+                        if (!lua_isstring(L, -1))
+                            tagsOk = false;
+                        else
+                            tags.emplace_back(lua_tostring(L, -1));
+                        lua_pop(L, 1);
+                    }
+
+                    if (!tagsOk || tags.empty()) {
+                        self->addError(std::format("{}: hl.layer_rule: match value for 'tag' must be a non-empty array of strings", sourceInfo));
+                        lua_pop(L, 1);
+                        continue;
+                    }
+
+                    rule->registerMatch(*prop, tags);
+                    lua_pop(L, 1);
+                    continue;
+                }
+
                 std::string matchVal;
                 if (lua_type(L, -1) == LUA_TBOOLEAN)
                     matchVal = lua_toboolean(L, -1) ? "true" : "false";
@@ -1329,11 +1403,7 @@ static int hlLayerRule(lua_State* L) {
                     lua_pop(L, 1);
                     continue;
                 }
-                auto prop = Desktop::Rule::matchPropFromString(matchKey);
-                if (prop.has_value())
-                    rule->registerMatch(*prop, matchVal);
-                else
-                    self->addError(std::format("{}: hl.layer_rule: unknown match property '{}'", sourceInfo, matchKey));
+                rule->registerMatch(*prop, matchVal);
             }
             lua_pop(L, 1);
         }

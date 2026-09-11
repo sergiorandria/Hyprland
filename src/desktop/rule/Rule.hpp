@@ -52,15 +52,18 @@ namespace Desktop::Rule {
         virtual std::underlying_type_t<eRuleProperty> getPropertiesMask();
 
         void                                          registerMatch(eRuleProperty, const std::string&);
-        void                                          setEnabled(bool enable);
-        bool                                          isEnabled() const;
-        void                                          markAsExecRule(const std::string& token, uint64_t pid, bool persistent = false);
-        bool                                          isExecRule();
-        bool                                          isExecPersistent();
-        bool                                          execExpired();
-        const std::string&                            execToken();
+        // Multi-value match (currently only meaningful for tags: all must match).
+        // Replaces any previous match for the property, like the above.
+        void               registerMatch(eRuleProperty, const std::vector<std::string>&);
+        void               setEnabled(bool enable);
+        bool               isEnabled() const;
+        void               markAsExecRule(const std::string& token, uint64_t pid, bool persistent = false);
+        bool               isExecRule();
+        bool               isExecPersistent();
+        bool               execExpired();
+        const std::string& execToken();
 
-        const std::string&                            name();
+        const std::string& name();
 
       protected:
         IRule(const std::string& name = "");

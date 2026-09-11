@@ -87,6 +87,17 @@ IRule::IRule(const std::string& name) : m_name(name) {
     ;
 }
 
+void IRule::registerMatch(eRuleProperty p, const std::vector<std::string>& tags) {
+    if (p != RULE_PROP_TAG) {
+        LOG(Log::ERR, "BUG THIS: IRule: multi-value registerMatch is only supported for tags");
+        return;
+    }
+
+    m_matchEngines[p] = makeUnique<CTagMatchEngine>(tags);
+
+    m_mask |= p;
+}
+
 void IRule::registerMatch(eRuleProperty p, const std::string& s) {
     const auto IT = std::ranges::lower_bound(RULE_ENGINES, p, {}, [](auto pair) { return pair.first; });
     if (IT == RULE_ENGINES.end() || IT->first != p) {
