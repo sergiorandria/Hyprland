@@ -44,7 +44,7 @@ static std::expected<std::vector<std::string>, std::string> parseKeyString(std::
         if (key.empty())
             return std::unexpected("Empty key in key list");
 
-        std::string folded = key;
+        std::string folded{key};
         for (auto& c : folded)
             c = sc<char>(std::tolower(sc<unsigned char>(c)));
 
