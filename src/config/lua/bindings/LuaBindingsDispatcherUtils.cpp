@@ -4,6 +4,7 @@ using namespace Config::Lua::Bindings;
 
 static constexpr const char* DISPATCHER_MT = "HL.Dispatcher";
 static char                  DISPATCHER_TABLES_REGISTRY_KEY;
+static char                  DISPATCHER_FACTORY_TAG;
 
 namespace {
     struct SDispatcherRef {
@@ -99,7 +100,8 @@ void Internal::setFn(lua_State* L, const char* name, lua_CFunction fn) {
     if (isDispatcherTable(L, -1)) {
         lua_pushcfunction(L, fn);
         lua_pushstring(L, name);
-        lua_pushcclosure(L, dispatcherFactory, 2);
+        lua_pushlightuserdata(L, &DISPATCHER_FACTORY_TAG);
+        lua_pushcclosure(L, dispatcherFactory, 3);
     } else
         lua_pushcfunction(L, fn);
 
@@ -141,6 +143,20 @@ int Internal::wrapDispatcher(lua_State* L) {
     lua_setmetatable(L, -2);
 
     return 1;
+}
+
+bool Internal::isDispatcherFactory(lua_State* L, int idx) {
+    if (!lua_iscfunction(L, idx))
+        return false;
+
+    // factories carry our tag as a third upvalue; plain lua (or foreign C)
+    // functions never do.
+    if (!lua_getupvalue(L, idx, 3))
+        return false;
+
+    const bool tagged = lua_islightuserdata(L, -1) && lua_touserdata(L, -1) == &DISPATCHER_FACTORY_TAG;
+    lua_pop(L, 1);
+    return tagged;
 }
 
 bool Internal::pushDispatcherFunction(lua_State* L, int idx) {

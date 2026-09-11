@@ -263,6 +263,9 @@ static int hlExecRaw(lua_State* L) {
     if (!proc)
         return Internal::configError(L, std::format("exec_raw: bad argument 1: {}", proc.error()));
 
+    if (!lua_isnoneornil(L, 2))
+        return Internal::configError(L, "exec_raw: unexpected argument 2 (exec_raw does not support effects; use exec instead)");
+
     lua_pushstring(L, proc->c_str());
     lua_pushcclosure(L, dsp_execRaw, 1);
     return 1;

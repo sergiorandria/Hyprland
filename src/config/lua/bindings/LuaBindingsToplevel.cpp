@@ -18,6 +18,9 @@
 #include <hyprutils/string/String.hpp>
 #include <hyprutils/string/VarList.hpp>
 
+#include <algorithm>
+#include <cctype>
+
 using namespace Config;
 using namespace Config::Lua;
 using namespace Config::Lua::Bindings;
@@ -33,12 +36,22 @@ static std::expected<std::vector<std::string>, std::string> parseKeyString(std::
     CVarList2                list(value, 0, '+', true);
     std::vector<std::string> keys;
     keys.reserve(list.size());
+    std::vector<std::string> seenFolded;
+    seenFolded.reserve(list.size());
 
     for (const auto& entry : list) {
         auto key = Hyprutils::String::trim(entry);
         if (key.empty())
             return std::unexpected("Empty key in key list");
 
+        std::string folded = key;
+        for (auto& c : folded)
+            c = sc<char>(std::tolower(sc<unsigned char>(c)));
+
+        if (std::ranges::find(seenFolded, folded) != seenFolded.end())
+            return std::unexpected(std::format("Duplicate key '{}' in key list", key));
+
+        seenFolded.emplace_back(std::move(folded));
         keys.emplace_back(std::move(key));
     }
 
@@ -82,6 +95,9 @@ static int hlBind(lua_State* L) {
 
     const std::string handler = luaL_tolstring(L, 2, nullptr);
     lua_pop(L, 1);
+
+    if (Internal::isDispatcherFactory(L, 2))
+        return Internal::configError(L, "hl.bind: dispatcher is an uncalled factory (e.g. hl.dsp.window.kill); did you forget to call it (hl.dsp.window.kill())?");
 
     if (!Internal::pushDispatcherFunction(L, 2))
         return Internal::configError(L, "hl.bind: dispatcher must be a dispatcher (e.g. hl.dsp.window.close()) or a lua function");
