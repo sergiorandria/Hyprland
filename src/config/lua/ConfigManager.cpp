@@ -26,6 +26,7 @@
 #include "../shared/inotify/ConfigWatcher.hpp"
 
 #include "../../desktop/rule/Engine.hpp"
+#include "../../managers/permissions/DynamicPermissionManager.hpp"
 #include "../../event/EventBus.hpp"
 #include "../../Compositor.hpp"
 #include "../../managers/input/InputManager.hpp"
@@ -713,6 +714,8 @@ void CConfigManager::reload() {
     Config::workspaceRuleMgr()->clear();
     Config::monitorRuleMgr()->clear();
     Desktop::Rule::ruleEngine()->clearAllRules();
+    if (g_pDynamicPermissionManager)
+        g_pDynamicPermissionManager->clearConfigPermissions();
     g_pTrackpadGestures->clearGestures();
     cleanTimers();
     clearLuaLayoutProviders();

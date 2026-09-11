@@ -559,8 +559,6 @@ static int hlPluginLoad(lua_State* L) {
 }
 
 static int hlPermission(lua_State* L) {
-    auto*       mgr = sc<CConfigManager*>(lua_touserdata(L, lua_upvalueindex(1)));
-
     std::string binary;
     std::string typeStr;
     std::string modeStr;
@@ -620,7 +618,7 @@ static int hlPermission(lua_State* L) {
     if (mode == PERMISSION_RULE_ALLOW_MODE_UNKNOWN)
         return Internal::configError(L, "hl.permission: unknown permission allow mode");
 
-    if (mgr->isFirstLaunch() && g_pDynamicPermissionManager)
+    if (g_pDynamicPermissionManager)
         g_pDynamicPermissionManager->addConfigPermissionRule(binary, type, mode);
 
     return 0;
