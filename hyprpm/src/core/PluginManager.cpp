@@ -506,7 +506,10 @@ bool CPluginManager::updateHeaders(bool force) {
 
     const auto CURRENTHEADERS = headersValid();
 
-    if (!force && (CURRENTHEADERS == HEADERS_OK || CURRENTHEADERS == HEADERS_ABI_MISMATCH)) {
+    // NB: an ABI mismatch must refresh: the on-disk headers may predate an ABI
+    // break (e.g. a distro dep bump without a Hyprland commit change) and
+    // rebuilding plugins against them produces unloadable binaries.
+    if (!force && CURRENTHEADERS == HEADERS_OK) {
         std::println("\n{}", successString("Headers up to date."));
         return true;
     }
