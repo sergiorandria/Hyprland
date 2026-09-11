@@ -754,6 +754,8 @@ std::vector<SP<IValue>> Values::getConfigValues() {
                  Config::VEC2{0, 0}, {.validator = vec2Range(0, 0, 1000, 1000), .refresh = Supplementary::REFRESH_LAYOUTS}),
         MS<Float>("layout:single_window_aspect_ratio_tolerance", "Minimum distance for single_window_aspect_ratio to take effect.", 0.1F,
                   {.min = 0.F, .max = 1.F, .refresh = Supplementary::REFRESH_LAYOUTS}),
+        MS<Bool>("layout:single_window_aspect_ratio_apply_on_maximize", "Whether single_window_aspect_ratio also applies to maximized windows.", false,
+                 {.refresh = Supplementary::REFRESH_LAYOUTS}),
 
         /*
          * dwindle:

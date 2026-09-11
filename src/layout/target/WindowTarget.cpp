@@ -25,6 +25,33 @@
 using namespace Hyprutils::Utils;
 using namespace Layout;
 
+static Vector2D singleWindowRatioPadding(const Vector2D& workAreaSize, size_t tiledCount) {
+    const static auto REQUESTEDRATIO          = CConfigValue<Config::VEC2>("layout:single_window_aspect_ratio");
+    const static auto REQUESTEDRATIOTOLERANCE = CConfigValue<Config::FLOAT>("layout:single_window_aspect_ratio_tolerance");
+
+    Vector2D          ratioPadding;
+
+    if ((*REQUESTEDRATIO).y == 0 || tiledCount > 1)
+        return ratioPadding;
+
+    const double requestedRatio = (*REQUESTEDRATIO).x / (*REQUESTEDRATIO).y;
+    const double originalRatio  = workAreaSize.x / workAreaSize.y;
+
+    if (requestedRatio > originalRatio) {
+        double padding = workAreaSize.y - (workAreaSize.x / requestedRatio);
+
+        if (padding / 2 > (*REQUESTEDRATIOTOLERANCE) * workAreaSize.y)
+            ratioPadding = Vector2D{0., padding};
+    } else if (requestedRatio < originalRatio) {
+        double padding = workAreaSize.x - (workAreaSize.y * requestedRatio);
+
+        if (padding / 2 > (*REQUESTEDRATIOTOLERANCE) * workAreaSize.x)
+            ratioPadding = Vector2D{padding, 0.};
+    }
+
+    return ratioPadding;
+}
+
 SP<CWindowTarget> CWindowTarget::create(PHLWINDOW w) {
     auto target    = SP<CWindowTarget>(new CWindowTarget(w));
     target->m_self = target;
@@ -110,9 +137,17 @@ void CWindowTarget::updatePos(uint8_t flags) {
 
             // Reserved area must be updated before this is called
             // Reserved area for all windows in a group are owned by the leading window. Other windows are hidden anyway so this simply ensures their sizes are uniform when FSed
-            const auto RESERVED = effectiveWindow()->getFullWindowReservedArea();
+            const auto        RESERVED = effectiveWindow()->getFullWindowReservedArea();
 
-            m_window->setBox({visualBox.pos() + RESERVED.topLeft, visualBox.size() - (RESERVED.topLeft + RESERVED.bottomRight)});
+            CBox              maximizedBox = {visualBox.pos() + RESERVED.topLeft, visualBox.size() - (RESERVED.topLeft + RESERVED.bottomRight)};
+
+            const static auto PAPPLYONMAXIMIZE = CConfigValue<Config::BOOL>("layout:single_window_aspect_ratio_apply_on_maximize");
+            if (*PAPPLYONMAXIMIZE) {
+                const auto PADDING = singleWindowRatioPadding(MONITOR_WORKAREA.size(), m_space->algorithm()->tiledTargets());
+                maximizedBox       = {maximizedBox.pos() + PADDING / 2., maximizedBox.size() - PADDING};
+            }
+
+            m_window->setBox(maximizedBox);
         }
 
         m_window->presentation().updateDecorations();
@@ -135,8 +170,17 @@ void CWindowTarget::updatePos(uint8_t flags) {
 
             // Reserved area must be updated before this is called
             // Reserved area for all windows in a group are owned by the leading window. Other windows are hidden anyway so this simply ensures their sizes are uniform when FSed
-            const auto RESERVED = effectiveWindow()->getFullWindowReservedArea();
-            m_window->setBox({visualBox.pos() + RESERVED.topLeft, visualBox.size() - (RESERVED.topLeft + RESERVED.bottomRight)});
+            const auto        RESERVED = effectiveWindow()->getFullWindowReservedArea();
+
+            CBox              maximizedBox = {visualBox.pos() + RESERVED.topLeft, visualBox.size() - (RESERVED.topLeft + RESERVED.bottomRight)};
+
+            const static auto PAPPLYONMAXIMIZE = CConfigValue<Config::BOOL>("layout:single_window_aspect_ratio_apply_on_maximize");
+            if (*PAPPLYONMAXIMIZE) {
+                const auto PADDING = singleWindowRatioPadding(MONITOR_WORKAREA.size(), m_space->algorithm()->tiledTargets());
+                maximizedBox       = {maximizedBox.pos() + PADDING / 2., maximizedBox.size() - PADDING};
+            }
+
+            m_window->setBox(maximizedBox);
         }
 
         m_window->presentation().updateDecorations();
