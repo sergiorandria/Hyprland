@@ -80,7 +80,9 @@ SP<CWindowFadeout> CWindowFadeout::create(PHLWINDOW window, SP<Render::IFramebuf
 
     Animation::mgr()->createAnimation(ANIMCTX.pos.from, fadeout->m_realPosition, Config::animationTree()->getAnimationPropertyConfig("windowsOut"), AVARDAMAGE_NONE);
     Animation::mgr()->createAnimation(ANIMCTX.size.from, fadeout->m_realSize, Config::animationTree()->getAnimationPropertyConfig("windowsOut"), AVARDAMAGE_NONE);
-    Animation::mgr()->createAnimation(sourceAlpha, fadeout->m_alpha, Config::animationTree()->getAnimationPropertyConfig("fadeOut"), AVARDAMAGE_NONE);
+
+    const auto FADECFG = Config::animationTree()->getAnimationPropertyConfig("fadeOut");
+    Animation::mgr()->createAnimation(sourceAlpha, fadeout->m_alpha, FADECFG, AVARDAMAGE_NONE);
 
     const WP<CWindowFadeout> WEAK = fadeout;
     fadeout->m_realPosition->setUpdateCallback([WEAK](auto) { damageWeakFadeout(WEAK); });
@@ -93,7 +95,11 @@ SP<CWindowFadeout> CWindowFadeout::create(PHLWINDOW window, SP<Render::IFramebuf
 
     *fadeout->m_realPosition = ANIMCTX.pos.to;
     *fadeout->m_realSize     = ANIMCTX.size.to;
-    *fadeout->m_alpha        = ANIMCTX.alpha.to;
+
+    if (FADECFG && FADECFG->internalEnabled)
+        *fadeout->m_alpha = ANIMCTX.alpha.to;
+    else
+        fadeout->m_noFade = true;
 
     if (window->backend().traits().suggestsNoBorder) {
         fadeout->m_realPosition->warp();
@@ -132,7 +138,10 @@ float CWindowFadeout::alpha() const {
 }
 
 bool CWindowFadeout::done() const {
-    return m_alpha->value() == 0.F && !m_alpha->isBeingAnimated() && !m_realPosition->isBeingAnimated() && !m_realSize->isBeingAnimated();
+    if (m_realPosition->isBeingAnimated() || m_realSize->isBeingAnimated() || m_alpha->isBeingAnimated())
+        return false;
+
+    return m_noFade || m_alpha->value() == 0.F;
 }
 
 SFadeoutRenderEffects CWindowFadeout::effects() const {

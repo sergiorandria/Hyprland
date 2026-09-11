@@ -29,5 +29,9 @@ namespace Desktop {
         bool              m_blurXray      = false;
         int               m_rounding      = 0;
         float             m_roundingPower = 2.F;
+
+        // set when the fadeOut animation is disabled: alpha stays put so that
+        // geometric close animations (e.g. slide) remain visible.
+        bool m_noFade = false;
     };
 }
