@@ -885,7 +885,12 @@ ActionResult Actions::setProp(const std::string& PROP, const std::string& VAL, s
             parsePropTrivial(PWINDOW->m_ruleApplicator->scrollTouchpad(), VAL);
         else if (PROP == "animation")
             parsePropTrivial(PWINDOW->m_ruleApplicator->animationStyle(), VAL);
-        else
+        else if (PROP == "minimized") {
+            if (VAL == "toggle")
+                PWINDOW->setMinimized(!PWINDOW->minimized());
+            else
+                PWINDOW->setMinimized(truthy(VAL));
+        } else
             return actionError("Invalid prop name", eActionErrorLevel::ERROR, eActionErrorCode::INVALID_ARGUMENT);
 
     } catch (std::exception& e) { return std::unexpected(std::format("Error parsing prop value: {}", std::string(e.what()))); }

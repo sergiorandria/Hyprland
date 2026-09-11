@@ -91,8 +91,7 @@ CForeignToplevelHandleWlr::CForeignToplevelHandleWlr(SP<CZwlrForeignToplevelHand
         if UNLIKELY (!PWINDOW->mapped())
             return;
 
-        IPC::Socket2::sock()->postEvent({.event = "minimized", .data = std::format("{:x},1", rc<uintptr_t>(PWINDOW.get()))});
-        Event::bus()->m_events.window.minimize.emit(PWINDOW, true);
+        PWINDOW->setMinimized(true);
     });
 
     m_resource->setUnsetMinimized([this](CZwlrForeignToplevelHandleV1* p) {
@@ -104,8 +103,7 @@ CForeignToplevelHandleWlr::CForeignToplevelHandleWlr(SP<CZwlrForeignToplevelHand
         if UNLIKELY (!PWINDOW->mapped())
             return;
 
-        IPC::Socket2::sock()->postEvent({.event = "minimized", .data = std::format("{:x},0", rc<uintptr_t>(PWINDOW.get()))});
-        Event::bus()->m_events.window.minimize.emit(PWINDOW, false);
+        PWINDOW->setMinimized(false);
     });
 
     m_resource->setClose([this](CZwlrForeignToplevelHandleV1* p) {
@@ -179,6 +177,11 @@ void CForeignToplevelHandleWlr::sendState() {
             *p = ZWLR_FOREIGN_TOPLEVEL_HANDLE_V1_STATE_FULLSCREEN;
         else
             *p = ZWLR_FOREIGN_TOPLEVEL_HANDLE_V1_STATE_MAXIMIZED;
+    }
+
+    if (PWINDOW->minimized()) {
+        auto p = sc<uint32_t*>(wl_array_add(&state, sizeof(uint32_t)));
+        *p     = ZWLR_FOREIGN_TOPLEVEL_HANDLE_V1_STATE_MINIMIZED;
     }
 
     m_resource->sendState(&state);
@@ -302,6 +305,18 @@ void CForeignToplevelWlrManager::onFullscreen(PHLWINDOW pWindow) {
     H->m_resource->sendDone();
 }
 
+void CForeignToplevelWlrManager::onMinimized(PHLWINDOW pWindow) {
+    if UNLIKELY (m_finished)
+        return;
+
+    const auto H = handleForWindow(pWindow);
+    if UNLIKELY (!H || H->m_closed)
+        return;
+
+    H->sendState();
+    H->m_resource->sendDone();
+}
+
 void CForeignToplevelWlrManager::onNewFocus(PHLWINDOW pWindow) {
     if UNLIKELY (m_finished)
         return;
@@ -377,6 +392,15 @@ CForeignToplevelWlrProtocol::CForeignToplevelWlrProtocol(const wl_interface* ifa
 
         for (auto const& m : m_managers) {
             m->onFullscreen(window);
+        }
+    });
+
+    static auto P6 = Event::bus()->m_events.window.minimize.listen([this](PHLWINDOW window, bool) {
+        if (!windowValidForForeign(window))
+            return;
+
+        for (auto const& m : m_managers) {
+            m->onMinimized(window);
         }
     });
 }

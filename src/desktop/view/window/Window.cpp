@@ -832,6 +832,20 @@ void CWindow::activate(bool force) {
     warpCursor();
 }
 
+bool CWindow::minimized() const {
+    return m_minimized;
+}
+
+void CWindow::setMinimized(bool minimized) {
+    if (m_minimized == minimized)
+        return;
+
+    m_minimized = minimized;
+
+    IPC::Socket2::sock()->postEvent({.event = "minimized", .data = std::format("{:x},{}", rc<uintptr_t>(this), minimized ? 1 : 0)});
+    Event::bus()->m_events.window.minimize.emit(m_self.lock(), minimized);
+}
+
 void CWindow::onUpdateState(const SBackendStateRequest& request) {
     requestClientFullscreen({
         .fullscreen        = request.fullscreen,

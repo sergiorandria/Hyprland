@@ -216,6 +216,8 @@ namespace Desktop::View {
         const std::string&         workspaceAddress() const;
         std::string_view           workspaceType() const;
         void                       activate(bool force = false);
+        bool                       minimized() const;
+        void                       setMinimized(bool minimized);
         bool                       clampWindowSize(const std::optional<Vector2D> minSize, const std::optional<Vector2D> maxSize);
         float                      getScrollMouse();
         float                      getScrollTouchpad();
@@ -274,9 +276,12 @@ namespace Desktop::View {
         void         unmanagedSetGeometry(const CBox& box);
         virtual void onInputBlockStateUpdated(bool blocked) override;
         // For hidden windows and stuff
-        bool        m_hidden    = false;
-        bool        m_suspended = false;
-        bool        m_isMapped  = false;
+        bool m_hidden    = false;
+        bool m_suspended = false;
+        bool m_isMapped  = false;
+        // Foreign-toplevel minimized state, settable via setprop. State only,
+        // no hiding: consumers (e.g. bars) react to the socket event.
+        bool        m_minimized = false;
         std::string m_lastWorkspaceAddress;
         std::string m_lastWorkspaceType;
         bool        m_lastWorkspaceSpecial = false;
