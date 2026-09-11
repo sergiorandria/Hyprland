@@ -627,6 +627,17 @@ static int dsp_moveIntoGroup(lua_State* L) {
     return Internal::checkResult(L, CA::moveIntoGroup(sc<Math::eDirection>((int)lua_tonumber(L, lua_upvalueindex(1))), Internal::windowFromUpval(L, 2)));
 }
 
+static int dsp_moveIntoGroupWithWindow(lua_State* L) {
+    auto       source = Internal::windowFromUpval(L, 1);
+
+    const auto targetSelector = lua_tostring(L, lua_upvalueindex(2));
+    const auto target         = Desktop::viewState()->query().selector(targetSelector).runWindow();
+    if (!target)
+        return Internal::dispatcherError(L, "hl.window.move: into_group target window not found", WARN, C_NOTFOUND);
+
+    return Internal::checkResult(L, CA::moveIntoGroup(target, source));
+}
+
 static int dsp_moveOutOfGroup(lua_State* L) {
     return Internal::checkResult(L, CA::moveOutOfGroup(sc<Math::eDirection>((int)lua_tonumber(L, lua_upvalueindex(1))), Internal::windowFromUpval(L, 2)));
 }
@@ -841,11 +852,16 @@ static int hlWindowMove(lua_State* L) {
     auto intoGroup = Internal::tableOptStr(L, 1, "into_group");
     if (intoGroup) {
         auto dir = Internal::parseDirectionStr(*intoGroup);
-        if (dir == Math::DIRECTION_DEFAULT)
-            return Internal::configError(L, "hl.window.move: invalid into_group direction \"{}\"", *intoGroup);
-        lua_pushnumber(L, (int)dir);
+        if (dir != Math::DIRECTION_DEFAULT) {
+            lua_pushnumber(L, (int)dir);
+            Internal::pushWindowUpval(L, 1);
+            lua_pushcclosure(L, dsp_moveIntoGroup, 2);
+            return 1;
+        }
+        // otherwise treat it as a window selector for an explicit target window.
         Internal::pushWindowUpval(L, 1);
-        lua_pushcclosure(L, dsp_moveIntoGroup, 2);
+        lua_pushstring(L, intoGroup->c_str());
+        lua_pushcclosure(L, dsp_moveIntoGroupWithWindow, 2);
         return 1;
     }
 

@@ -100,6 +100,7 @@ namespace Config::Actions {
     ActionResult lockGroups(eTogglableAction action);
     ActionResult lockActiveGroup(eTogglableAction action);
     ActionResult moveIntoGroup(Math::eDirection direction, std::optional<PHLWINDOW> window = std::nullopt /* Active */);
+    ActionResult moveIntoGroup(PHLWINDOW target, std::optional<PHLWINDOW> window = std::nullopt /* Active */);
     ActionResult moveOutOfGroup(Math::eDirection direction, std::optional<PHLWINDOW> window = std::nullopt /* Active */);
     ActionResult moveGroupWindow(bool forward = true);
     ActionResult moveWindowOrGroup(Math::eDirection direction, std::optional<PHLWINDOW> window = std::nullopt /* Active */);

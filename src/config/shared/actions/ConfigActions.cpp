@@ -1394,6 +1394,30 @@ ActionResult Actions::moveIntoGroup(Math::eDirection direction, std::optional<PH
     return {};
 }
 
+ActionResult Actions::moveIntoGroup(PHLWINDOW target, std::optional<PHLWINDOW> w) {
+    static auto PIGNOREGROUPLOCK = CConfigValue<Config::INTEGER>("binds:ignore_group_lock");
+
+    if (!*PIGNOREGROUPLOCK && Desktop::windowState()->groupsLocked())
+        return {};
+
+    auto window = xtract(w);
+    if (!window || !target)
+        return {};
+
+    if (window == target)
+        return actionError("Cannot move a window into its own group", eActionErrorLevel::WARNING, eActionErrorCode::INVALID_STATE);
+
+    if (!target->grouping().group())
+        return actionError("Target window is not in a group", eActionErrorLevel::WARNING, eActionErrorCode::INVALID_STATE);
+
+    if (!*PIGNOREGROUPLOCK && (target->grouping().group()->locked() || (window->grouping().group() && window->grouping().group()->locked())))
+        return {};
+
+    moveWindowIntoGroupHelper(window, target);
+
+    return {};
+}
+
 ActionResult Actions::moveOutOfGroup(Math::eDirection direction, std::optional<PHLWINDOW> w) {
     static auto PIGNOREGROUPLOCK = CConfigValue<Config::INTEGER>("binds:ignore_group_lock");
 
