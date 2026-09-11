@@ -62,7 +62,7 @@ namespace Desktop::Rule {
 
         std::expected<void, std::string>                   addEffect(storageType e, const Math::SExpressionVec2& expr);
 
-        bool                                               matches(PHLWINDOW w, bool allowEnvLookup = false);
+        bool                                               matches(PHLWINDOW w, bool allowEnvLookup = false, bool staticRead = false);
         bool                                               matches(Desktop::Rule::eRuleProperty p, const std::string& s);
         bool                                               matches(Desktop::Rule::eRuleProperty p, bool b);
 

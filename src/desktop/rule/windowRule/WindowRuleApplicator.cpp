@@ -528,7 +528,7 @@ bool CWindowRuleApplicator::readStaticRules(bool preRead) {
 
         auto wr = reinterpretPointerCast<CWindowRule>(r);
 
-        if (!wr->matches(m_window.lock(), true))
+        if (!wr->matches(m_window.lock(), true, true))
             continue;
 
         if (wr->isExecRule()) {
@@ -536,7 +536,10 @@ bool CWindowRuleApplicator::readStaticRules(bool preRead) {
             continue;
         }
 
+        const auto FLOATBEFORE = static_.floating;
         applyStaticRule(wr);
+        if (static_.floating != FLOATBEFORE)
+            propsToRecheck |= RULE_PROP_FLOATING;
         const auto RES  = applyDynamicRule(wr);
         tagsWereChanged = tagsWereChanged || RES.tagsChanged;
     }
@@ -566,7 +569,7 @@ void CWindowRuleApplicator::recheckStaticRules() {
 
         auto wr = reinterpretPointerCast<CWindowRule>(r);
 
-        if (!wr->matches(m_window.lock(), true))
+        if (!wr->matches(m_window.lock(), true, true))
             continue;
 
         applyStaticRule(wr);

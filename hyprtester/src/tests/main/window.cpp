@@ -2182,3 +2182,29 @@ TEST_CASE(windowRuleBorderColorsFocus) {
 
     Tests::killAllWindows();
 }
+
+TEST_CASE(staticRuleMatchesRuledState) {
+    Tests::killAllWindows();
+
+    OK(getFromSocket("/dispatch hl.dsp.focus({ workspace = 'name:staticfloat' })"));
+
+    // the float-matching rule comes first on purpose: without a static recheck
+    // it would miss the float state decided by the rule below.
+    OK(getFromSocket(R"#(/eval hl.window_rule({ name = 'staticfloatpin', match = { float = true }, pin = true })
+ hl.window_rule({ name = 'staticfloatall', match = { class = '.*' }, float = true })
+    )#"));
+
+    SPAWN_KITTY("staticfloatkitty");
+    Tests::waitUntilWindowsN(1);
+
+    {
+        auto str = getFromSocket("/clients");
+        EXPECT_CONTAINS(str, "floating: 1");
+        EXPECT_CONTAINS(str, "pinned: 1");
+    }
+
+    OK(getFromSocket("/eval hl.window_rule({ name = 'staticfloatpin', enabled = false })"));
+    OK(getFromSocket("/eval hl.window_rule({ name = 'staticfloatall', enabled = false })"));
+
+    Tests::killAllWindows();
+}

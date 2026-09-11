@@ -380,7 +380,7 @@ std::expected<WindowRuleEffectValue, std::string> CWindowRule::parseEffect(CWind
     return parseWindowRuleEffect(e, result);
 }
 
-bool CWindowRule::matches(PHLWINDOW w, bool allowEnvLookup) {
+bool CWindowRule::matches(PHLWINDOW w, bool allowEnvLookup, bool staticRead) {
     if (!canMatch())
         return false;
 
@@ -408,7 +408,9 @@ bool CWindowRule::matches(PHLWINDOW w, bool allowEnvLookup) {
                     return false;
                 break;
             case RULE_PROP_FLOATING:
-                if (!engine->match(w->isFloating()))
+                // during static reads, also consider float state decided by static
+                // effects earlier in the pass (live state is not updated yet).
+                if (!engine->match(w->isFloating() || (staticRead && w->m_ruleApplicator->static_.floating.value_or(false))))
                     return false;
                 break;
             case RULE_PROP_TAG:
