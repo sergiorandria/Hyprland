@@ -5,6 +5,8 @@
 #include "WaylandProtocol.hpp"
 #include "xdg-activation-v1.hpp"
 
+class CWLSeatResource;
+
 class CXDGActivationToken {
   public:
     CXDGActivationToken(SP<CXdgActivationTokenV1> resource_);
@@ -15,7 +17,8 @@ class CXDGActivationToken {
   private:
     SP<CXdgActivationTokenV1> m_resource;
 
-    uint32_t                  m_serial    = 0;
+    uint32_t                  m_serial = 0;
+    SP<CWLSeatResource>       m_seat;
     std::string               m_appID     = "";
     bool                      m_committed = false;
 

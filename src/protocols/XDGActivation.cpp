@@ -1,7 +1,9 @@
 #include "XDGActivation.hpp"
 #include "../managers/TokenManager.hpp"
+#include "../managers/SeatManager.hpp"
 #include "../Compositor.hpp"
 #include "core/Compositor.hpp"
+#include "core/Seat.hpp"
 #include <algorithm>
 
 CXDGActivationToken::CXDGActivationToken(SP<CXdgActivationTokenV1> resource_) : m_resource(resource_) {
@@ -11,7 +13,10 @@ CXDGActivationToken::CXDGActivationToken(SP<CXdgActivationTokenV1> resource_) : 
     m_resource->setDestroy([this](CXdgActivationTokenV1* r) { PROTO::activation->destroyToken(this); });
     m_resource->setOnDestroy([this](CXdgActivationTokenV1* r) { PROTO::activation->destroyToken(this); });
 
-    m_resource->setSetSerial([this](CXdgActivationTokenV1* r, uint32_t serial_, wl_resource* seat) { m_serial = serial_; });
+    m_resource->setSetSerial([this](CXdgActivationTokenV1* r, uint32_t serial_, wl_resource* seat) {
+        m_serial = serial_;
+        m_seat   = CWLSeatResource::fromResource(seat);
+    });
 
     m_resource->setSetAppId([this](CXdgActivationTokenV1* r, const char* appid) { m_appID = appid; });
 
@@ -20,6 +25,13 @@ CXDGActivationToken::CXDGActivationToken(SP<CXdgActivationTokenV1> resource_) : 
         // if it was used? the protocol spec doesn't say _when_ it should be sent...
         if UNLIKELY (m_committed) {
             LOG(Log::WARN, "possible protocol error, two commits from one token. Ignoring.");
+            return;
+        }
+
+        // A provided serial must be a recent, valid seat serial. Otherwise any app
+        // could mint activation tokens and steal focus at will.
+        if (m_serial != 0 && (!m_seat || !g_pSeatManager->serialValid(m_seat, m_serial, false))) {
+            LOG(Log::WARN, "xdg_activation token commit with an invalid serial, ignoring.");
             return;
         }
 
