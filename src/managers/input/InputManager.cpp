@@ -2108,6 +2108,11 @@ void CInputManager::setTabletConfigs() {
             const auto NAME        = t->m_hlName;
             const auto LIBINPUTDEV = t->aq()->getLibinputHandle();
 
+            const auto ENABLED = Config::mgr()->getDeviceInt(NAME, "enabled", "input:tablet:enabled");
+            const auto mode    = ENABLED ? LIBINPUT_CONFIG_SEND_EVENTS_ENABLED : LIBINPUT_CONFIG_SEND_EVENTS_DISABLED;
+            if (libinput_device_config_send_events_get_mode(LIBINPUTDEV) != mode)
+                libinput_device_config_send_events_set_mode(LIBINPUTDEV, mode);
+
             const auto RELINPUT = Config::mgr()->getDeviceInt(NAME, "relative_input", "input:tablet:relative_input");
             t->m_relativeInput  = RELINPUT;
 
