@@ -10,6 +10,7 @@
 #include "../config/ConfigValue.hpp"
 #include "../i18n/Engine.hpp"
 #include "../event/EventBus.hpp"
+#include "../ipc/s2/S2.hpp"
 #include "../workspace/query/Query.hpp"
 
 using namespace Hyprutils::OS;
@@ -102,6 +103,8 @@ void CANRManager::onTick() {
         if (data->missedResponses >= *PANRTHRESHOLD) {
             if (!data->isRunning() && !data->dialogSaidWait) {
                 data->runDialog(firstWindow->metadata().title(), firstWindow->metadata().appID(), data->pid);
+
+                IPC::Socket2::sock()->postEvent({.event = "anr", .data = std::to_string(data->pid)});
 
                 for (const auto& w : Desktop::windowState()->windows()) {
                     if (!w->mapped())
