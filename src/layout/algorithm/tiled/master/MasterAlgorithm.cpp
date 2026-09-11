@@ -1015,6 +1015,17 @@ SP<SMasterNodeData> CMasterAlgorithm::getNodeFromTarget(SP<ITarget> x) const {
     return nullptr;
 }
 
+std::vector<std::pair<std::string, std::string>> CMasterAlgorithm::additionalWindowProps(SP<ITarget> target) {
+    if (!target)
+        return {};
+
+    const auto NODE = getNodeFromTarget(target);
+    if (!NODE)
+        return {};
+
+    return {{"master", NODE->isMaster ? "true" : "false"}};
+}
+
 SP<SMasterNodeData> CMasterAlgorithm::getMasterNode() {
     for (const auto& n : m_masterNodesData) {
         if (n->isMaster)

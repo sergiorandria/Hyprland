@@ -1011,3 +1011,30 @@ TEST_CASE(masterDropAtCursor) {
     CALL_SUBTEST(expectTripleDragSwap, 3, 2, 1, 3, 2);
     OK(getFromSocket("/eval hl.config({ master = { new_on_top = false } })"));
 }
+
+TEST_CASE(layoutWindowProps) {
+    Tests::killAllWindows();
+
+    OK(getFromSocket("r/eval hl.config({ general = { layout = 'master' } })"));
+    OK(getFromSocket("/dispatch hl.dsp.focus({ workspace = 'name:layoutprops' })"));
+
+    SPAWN_KITTY("props_a");
+    SPAWN_KITTY("props_b");
+    Tests::waitUntilWindowsN(2);
+
+    {
+        // every window reports master status on the master layout
+        auto str = getFromSocket("/clients");
+        EXPECT_COUNT_STRING(str, "master: ", 2);
+    }
+
+    OK(getFromSocket("r/eval hl.config({ general = { layout = 'dwindle' } })"));
+
+    {
+        // other layouts print no extra props
+        auto str = getFromSocket("/clients");
+        EXPECT_NOT_CONTAINS(str, "master: ");
+    }
+
+    Tests::killAllWindows();
+}

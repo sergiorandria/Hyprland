@@ -392,6 +392,19 @@ std::string CCommandFormatter::getWindowData(PHLWINDOW w, eHyprCtlOutputFormat f
     const bool VISIBLE           = w->mapped() && w->acceptsInput() && w->alphaNonZero();
     const auto WORKSPACE_ADDRESS = w->workspaceAddress();
 
+    // extra per-window props provided by the active layout (e.g. master status).
+    std::string layoutPropsJson, layoutPropsText;
+    if (const auto TARGET = w->layoutTarget(); TARGET && TARGET->space() && TARGET->space()->algorithm() && TARGET->space()->algorithm()->tiledAlgo()) {
+        for (const auto& [key, val] : TARGET->space()->algorithm()->tiledAlgo()->additionalWindowProps(TARGET)) {
+            if (!layoutPropsJson.empty()) {
+                layoutPropsJson += ", ";
+                layoutPropsText += "\n";
+            }
+            layoutPropsJson += std::format("\"{}\": {}", escapeJSONStrings(key), val);
+            layoutPropsText += std::format("\t{}: {}", key, val);
+        }
+    }
+
     if (format == eHyprCtlOutputFormat::FORMAT_JSON) {
         return std::format(
             R"#({{
@@ -430,7 +443,7 @@ std::string CCommandFormatter::getWindowData(PHLWINDOW w, eHyprCtlOutputFormat f
     "xdgDescription": "{}",
     "contentType": "{}",
     "tearingHint": {},
-    "stableId": "{:x}"
+    "stableId": "{:x}"{}}}
 }},)#",
             rc<uintptr_t>(w.get()), (w->mapped() ? "true" : "false"), (w->isHidden() ? "true" : "false"), (VISIBLE ? "true" : "false"), (w->acceptsInput() ? "true" : "false"),
             sc<int>(w->position(Desktop::View::IGeometric::GEOMETRIC_GOAL).x), sc<int>(w->position(Desktop::View::IGeometric::GEOMETRIC_GOAL).y),
@@ -443,7 +456,8 @@ std::string CCommandFormatter::getWindowData(PHLWINDOW w, eHyprCtlOutputFormat f
             escapeJSONStrings(Fullscreen::controller()->getFullscreenHandlerNameAsString(w)), (w->fullscreenPolicy().allowedOverFullscreen() ? "true" : "false"),
             getGroupedData(w, format), getTagsData(w, format), rc<uintptr_t>(w->swallowing().swallowee().get()), getFocusHistoryID(w),
             (g_pInputManager->isWindowInhibiting(w, false) ? "true" : "false"), escapeJSONStrings(METADATA.tag.value_or("")), escapeJSONStrings(METADATA.description.value_or("")),
-            escapeJSONStrings(NContentType::toString(w->getContentType())), ((w->m_hints & Desktop::View::WINDOW_HINT_TEAR) ? "true" : "false"), w->metadata().stableID());
+            escapeJSONStrings(NContentType::toString(w->getContentType())), ((w->m_hints & Desktop::View::WINDOW_HINT_TEAR) ? "true" : "false"), w->metadata().stableID(),
+            layoutPropsJson.empty() ? "" : ",\n    " + layoutPropsJson);
     } else {
         return std::format(
             "Window {:x} -> {}:\n\tmapped: {}\n\thidden: {}\n\tvisible: {}\n\tacceptsInput: {}\n\tat: {},{}\n\tsize: {},{}\n\tworkspace: {} ({})\n\tfloating: {}\n\tmonitor: "
@@ -453,7 +467,7 @@ std::string CCommandFormatter::getWindowData(PHLWINDOW w, eHyprCtlOutputFormat f
             "{}\n\tfullscreen: {}\n\tfullscreenClient: {}\n\tfullscreenHandler: {}\n\tallowedOverFullscreen: {}\n\tgrouped: {}\n\ttags: {}\n\tswallowing: {:x}\n\tfocusHistoryID: "
             "{}\n\tinhibitingIdle: "
             "{}\n\txdgTag: "
-            "{}\n\txdgDescription: {}\n\tcontentType: {}\n\ttearingHint: {}\n\tstableID: {:x}\n\n",
+            "{}\n\txdgDescription: {}\n\tcontentType: {}\n\ttearingHint: {}\n\tstableID: {:x}\n{}\n",
             rc<uintptr_t>(w.get()), w->metadata().title(), sc<int>(w->mapped()), sc<int>(w->isHidden()), sc<int>(VISIBLE), sc<int>(w->acceptsInput()),
             sc<int>(w->position(Desktop::View::IGeometric::GEOMETRIC_GOAL).x), sc<int>(w->position(Desktop::View::IGeometric::GEOMETRIC_GOAL).y),
             sc<int>(w->size(Desktop::View::IGeometric::GEOMETRIC_GOAL).x), sc<int>(w->size(Desktop::View::IGeometric::GEOMETRIC_GOAL).y), WORKSPACE_ADDRESS,
@@ -464,7 +478,7 @@ std::string CCommandFormatter::getWindowData(PHLWINDOW w, eHyprCtlOutputFormat f
             Fullscreen::controller()->getFullscreenHandlerNameAsString(w), sc<int>(w->fullscreenPolicy().allowedOverFullscreen()), getGroupedData(w, format),
             getTagsData(w, format), rc<uintptr_t>(w->swallowing().swallowee().get()), getFocusHistoryID(w), sc<int>(g_pInputManager->isWindowInhibiting(w, false)),
             METADATA.tag.value_or(""), METADATA.description.value_or(""), NContentType::toString(w->getContentType()),
-            sc<int>(sc<bool>(w->m_hints & Desktop::View::WINDOW_HINT_TEAR)), w->metadata().stableID());
+            sc<int>(sc<bool>(w->m_hints & Desktop::View::WINDOW_HINT_TEAR)), w->metadata().stableID(), layoutPropsText.empty() ? "" : layoutPropsText + "\n");
     }
 }
 

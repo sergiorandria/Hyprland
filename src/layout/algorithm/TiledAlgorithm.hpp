@@ -7,6 +7,8 @@
 
 #include <optional>
 #include <string>
+#include <utility>
+#include <vector>
 
 namespace Layout {
 
@@ -23,6 +25,13 @@ namespace Layout {
         // typeid alone cannot identify the selected layout instance.
         virtual std::optional<std::string> layoutName() const {
             return std::nullopt;
+        }
+
+        // Optional extra per-window props for hyprctl clients output (e.g. master
+        // status). Values are emitted as JSON literals, so booleans and numbers
+        // must be given as e.g. "true" or "1", not quoted.
+        virtual std::vector<std::pair<std::string, std::string>> additionalWindowProps(SP<ITarget>) {
+            return {};
         }
 
       protected:
