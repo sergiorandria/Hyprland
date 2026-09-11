@@ -764,3 +764,33 @@ TEST_CASE(groupedExitWindowRetainsFullscreen) {
         EXPECT_CONTAINS(str, "fullscreenClient: 2");
     }
 }
+
+TEST_CASE(groupMatchRule) {
+    OK(getFromSocket("/dispatch hl.dsp.focus({ workspace = 'name:groupmatch' })"));
+
+    SPAWN_KITTY("kitty_groupmatch");
+
+    // properties follow grouped state: tag windows while grouped
+    OK(getFromSocket("/eval hl.window_rule({ name = 'groupmatchrule', match = { group = true }, tag = '+gmproof' })"));
+
+    {
+        auto str = getFromSocket("/clients");
+        EXPECT_NOT_CONTAINS(str, "gmproof");
+    }
+
+    OK(getFromSocket("/dispatch hl.dsp.group.toggle()"));
+
+    {
+        auto str = getFromSocket("/clients");
+        EXPECT_CONTAINS(str, "tags: gmproof*");
+    }
+
+    OK(getFromSocket("/dispatch hl.dsp.group.toggle()"));
+
+    {
+        auto str = getFromSocket("/clients");
+        EXPECT_NOT_CONTAINS(str, "gmproof");
+    }
+
+    Tests::killAllWindows();
+}
