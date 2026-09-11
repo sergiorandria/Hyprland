@@ -234,7 +234,7 @@ SP<ITarget> CAlgorithm::getNextCandidate(SP<ITarget> old) {
     if (old->floating() || *FOCUSONCLOSE == 2) {
         // use window history to determine best target
         for (const auto& w : Desktop::History::windowTracker()->fullHistory() | std::views::reverse) {
-            if (!w || !w->m_isMapped || w->isHidden())
+            if (!w || !w->mapped() || w->isHidden())
                 continue;
 
             if (!w->m_workspace || w->m_workspace->space() != m_space || !w->layoutTarget() || !w->layoutTarget()->space())
