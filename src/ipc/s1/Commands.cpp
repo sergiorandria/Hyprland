@@ -767,7 +767,13 @@ static std::string configErrorsRequest(eHyprCtlOutputFormat format, std::string 
 static std::string devicesRequest(eHyprCtlOutputFormat format, std::string request) {
     std::string result = "";
 
-    auto        getModState = [](SP<IKeyboard> keyboard, const char* xkbModName) -> bool {
+    // Ground truth for whether a device currently sends events. Keyboards track
+    // it explicitly; pointer-ish devices are read off libinput when available.
+    auto libinputSendEventsEnabled = [](struct libinput_device* dev) -> bool {
+        return !dev || libinput_device_config_send_events_get_mode(dev) == LIBINPUT_CONFIG_SEND_EVENTS_ENABLED;
+    };
+
+    auto getModState = [](SP<IKeyboard> keyboard, const char* xkbModName) -> bool {
         auto IDX = xkb_keymap_mod_get_index(keyboard->m_xkbKeymap, xkbModName);
 
         if (IDX == XKB_MOD_INVALID)
@@ -781,15 +787,18 @@ static std::string devicesRequest(eHyprCtlOutputFormat format, std::string reque
         result += "\"mice\": [\n";
 
         for (auto const& m : g_pInputManager->m_pointers) {
+            const bool ENABLED = m->aq() && m->aq()->getLibinputHandle() ? libinputSendEventsEnabled(m->aq()->getLibinputHandle()) : m->m_connected;
             result += std::format(
                 R"#(    {{
         "address": "0x{:x}",
         "name": "{}",
         "defaultSpeed": {:.5f},
-        "scrollFactor": {:.2f}
+        "scrollFactor": {:.2f},
+        "enabled": {}
     }},)#",
                 rc<uintptr_t>(m.get()), escapeJSONStrings(m->m_hlName),
-                m->aq() && m->aq()->getLibinputHandle() ? libinput_device_config_accel_get_default_speed(m->aq()->getLibinputHandle()) : 0.f, m->m_scrollFactor.value_or(-1));
+                m->aq() && m->aq()->getLibinputHandle() ? libinput_device_config_accel_get_default_speed(m->aq()->getLibinputHandle()) : 0.f, m->m_scrollFactor.value_or(-1),
+                ENABLED ? "true" : "false");
         }
 
         trimTrailingComma(result);
@@ -813,11 +822,13 @@ static std::string devicesRequest(eHyprCtlOutputFormat format, std::string reque
         "active_keymap": "{}",
         "capsLock": {},
         "numLock": {},
-        "main": {}
+        "main": {},
+        "enabled": {}
     }},)#",
                 rc<uintptr_t>(k.get()), escapeJSONStrings(k->m_hlName), escapeJSONStrings(k->m_currentRules.rules), escapeJSONStrings(k->m_currentRules.model),
                 escapeJSONStrings(k->m_currentRules.layout), escapeJSONStrings(k->m_currentRules.variant), escapeJSONStrings(k->m_currentRules.options), KI, escapeJSONStrings(KM),
-                (getModState(k, XKB_MOD_NAME_CAPS) ? "true" : "false"), (getModState(k, XKB_MOD_NAME_NUM) ? "true" : "false"), (k->m_active ? "true" : "false"));
+                (getModState(k, XKB_MOD_NAME_CAPS) ? "true" : "false"), (getModState(k, XKB_MOD_NAME_NUM) ? "true" : "false"), (k->m_active ? "true" : "false"),
+                (k->m_enabled ? "true" : "false"));
         }
 
         trimTrailingComma(result);
@@ -839,12 +850,14 @@ static std::string devicesRequest(eHyprCtlOutputFormat format, std::string reque
         }
 
         for (auto const& d : g_pInputManager->m_tablets) {
+            const bool ENABLED = d->aq() && d->aq()->getLibinputHandle() ? libinputSendEventsEnabled(d->aq()->getLibinputHandle()) : true;
             result += std::format(
                 R"#(    {{
         "address": "0x{:x}",
-        "name": "{}"
+        "name": "{}",
+        "enabled": {}
     }},)#",
-                rc<uintptr_t>(d.get()), escapeJSONStrings(d->m_hlName));
+                rc<uintptr_t>(d.get()), escapeJSONStrings(d->m_hlName), ENABLED ? "true" : "false");
         }
 
         for (auto const& d : g_pInputManager->m_tabletTools) {
@@ -862,12 +875,14 @@ static std::string devicesRequest(eHyprCtlOutputFormat format, std::string reque
         result += "\"touch\": [\n";
 
         for (auto const& d : g_pInputManager->m_touches) {
+            const bool ENABLED = d->aq() && d->aq()->getLibinputHandle() ? libinputSendEventsEnabled(d->aq()->getLibinputHandle()) : true;
             result += std::format(
                 R"#(    {{
         "address": "0x{:x}",
-        "name": "{}"
+        "name": "{}",
+        "enabled": {}
     }},)#",
-                rc<uintptr_t>(d.get()), escapeJSONStrings(d->m_hlName));
+                rc<uintptr_t>(d.get()), escapeJSONStrings(d->m_hlName), ENABLED ? "true" : "false");
         }
 
         trimTrailingComma(result);
