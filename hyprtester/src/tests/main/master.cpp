@@ -1028,12 +1028,24 @@ TEST_CASE(layoutWindowProps) {
         EXPECT_COUNT_STRING(str, "master: ", 2);
     }
 
+    {
+        // same for the json output (also proves the format args line up)
+        auto str = getFromSocket("j/clients");
+        EXPECT_CONTAINS(str, "\"master\": true");
+        EXPECT_CONTAINS(str, "\"master\": false");
+    }
+
     OK(getFromSocket("r/eval hl.config({ general = { layout = 'dwindle' } })"));
 
     {
         // other layouts print no extra props
         auto str = getFromSocket("/clients");
         EXPECT_NOT_CONTAINS(str, "master: ");
+    }
+
+    {
+        auto str = getFromSocket("j/clients");
+        EXPECT_NOT_CONTAINS(str, "\"master\"");
     }
 
     Tests::killAllWindows();
