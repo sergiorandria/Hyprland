@@ -15,7 +15,10 @@ CXDGActivationToken::CXDGActivationToken(SP<CXdgActivationTokenV1> resource_) : 
 
     m_resource->setSetSerial([this](CXdgActivationTokenV1* r, uint32_t serial_, wl_resource* seat) {
         m_serial = serial_;
-        m_seat   = CWLSeatResource::fromResource(seat);
+        // Validate now: the seat is guaranteed live for its own request, while
+        // holding it across requests could outlive its container.
+        const auto SEAT = CWLSeatResource::fromResource(seat);
+        m_serialValid   = SEAT && g_pSeatManager->serialValid(SEAT, serial_, false);
     });
 
     m_resource->setSetAppId([this](CXdgActivationTokenV1* r, const char* appid) { m_appID = appid; });
@@ -30,7 +33,7 @@ CXDGActivationToken::CXDGActivationToken(SP<CXdgActivationTokenV1> resource_) : 
 
         // A provided serial must be a recent, valid seat serial. Otherwise any app
         // could mint activation tokens and steal focus at will.
-        if (m_serial != 0 && (!m_seat || !g_pSeatManager->serialValid(m_seat, m_serial, false))) {
+        if (m_serial != 0 && !m_serialValid) {
             LOG(Log::WARN, "xdg_activation token commit with an invalid serial, ignoring.");
             return;
         }
