@@ -104,8 +104,15 @@ void CWindowTarget::updatePos(uint8_t flags) {
         return;
     }
 
+    // Resolve fullscreen state once for the branches below. Each resolution
+    // can trigger fullscreen-target error correction, so sharing one result
+    // also avoids repeated recovery attempts within a single update.
+    const auto FSMODES       = Fullscreen::controller()->getFullscreenModes(effectiveWindow());
+    const bool ISFULLSCREEN  = FSMODES.internal != Fullscreen::FSMODE_NONE;
+    const bool LAYOUTMANAGED = ISFULLSCREEN && Fullscreen::controller()->layoutManagedFS(effectiveWindow());
+
     // Non-FS Floating Windows
-    if (floating() && m_window && !Fullscreen::controller()->isFullscreen(effectiveWindow())) {
+    if (floating() && m_window && !ISFULLSCREEN) {
         m_window->setBox(m_box.logicalBox);
 
         if (CONFIGURECLIENT)
@@ -117,15 +124,16 @@ void CWindowTarget::updatePos(uint8_t flags) {
 
     /* FS Handling */
 
-    // prevent re-setting a covering FS window's pos after it is set by the FS calls
+    // prevent re-setting a covering FS window's pos after it is set by the FS calls.
+    // NB: covering matters here (e.g. the scrolling handler distinguishes covering
+    // from non-covering fullscreen), so this must stay a dedicated query.
     if (m_window && Fullscreen::controller()->isFullscreen(effectiveWindow(), std::nullopt, true)) {
         if (!Fullscreen::controller()->m_windowPosSettingQueued)
             return;
     }
 
     // Default Handled FS (floating or tiling)
-    if (const auto FSMODES = Fullscreen::controller()->getFullscreenModes(effectiveWindow());
-        FSMODES.internal != Fullscreen::FSMODE_NONE && !Fullscreen::controller()->layoutManagedFS(effectiveWindow())) {
+    if (ISFULLSCREEN && !LAYOUTMANAGED) {
         if (FSMODES.internal == Fullscreen::FSMODE_FULLSCREEN) {
             m_window->setBox(m_box.logicalBox);
 
@@ -157,8 +165,7 @@ void CWindowTarget::updatePos(uint8_t flags) {
     }
 
     // Layout handled FS (Tiled Only)
-    if (const auto FSMODES = Fullscreen::controller()->getFullscreenModes(effectiveWindow());
-        FSMODES.internal != Fullscreen::FSMODE_NONE && Fullscreen::controller()->layoutManagedFS(effectiveWindow())) {
+    if (ISFULLSCREEN && LAYOUTMANAGED) {
 
         CBox nodeBox   = m_box.logicalBox;
         CBox visualBox = m_box.visualBox.empty() ? nodeBox : m_box.visualBox;
@@ -221,7 +228,7 @@ void CWindowTarget::updatePos(uint8_t flags) {
 
         Vector2D          ratioPadding;
 
-        if ((*REQUESTEDRATIO).y != 0 && m_space->algorithm()->tiledTargets() <= 1 && m_window && !Fullscreen::controller()->isFullscreen(effectiveWindow())) {
+        if ((*REQUESTEDRATIO).y != 0 && m_space->algorithm()->tiledTargets() <= 1 && m_window && !ISFULLSCREEN) {
             const Vector2D originalSize = MONITOR_WORKAREA.size();
 
             const double   requestedRatio = (*REQUESTEDRATIO).x / (*REQUESTEDRATIO).y;
@@ -249,7 +256,7 @@ void CWindowTarget::updatePos(uint8_t flags) {
         calcSize = calcSize - GAPOFFSETTOPLEFT - GAPOFFSETBOTTOMRIGHT - ratioPadding;
     }
 
-    if (isPseudo() && m_window && !Fullscreen::controller()->isFullscreen(effectiveWindow())) {
+    if (isPseudo() && m_window && !ISFULLSCREEN) {
         // Calculate pseudo
         float scale = 1;
 
