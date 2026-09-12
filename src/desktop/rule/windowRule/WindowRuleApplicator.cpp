@@ -177,9 +177,13 @@ CWindowRuleApplicator::SRuleResult CWindowRuleApplicator::applyDynamicRule(const
                 break;
             }
             case WINDOW_RULE_EFFECT_TAG: {
-                m_dynamicTags.emplace_back(effect, rule->getPropertiesMask());
-                m_tagKeeper.applyTag(effect, true);
-                result.tagsChanged = true;
+                // only track (and report a change for) tags this rule actually
+                // added: re-applying an already present tag must neither
+                // duplicate the tracking entry nor remove someone else's tag.
+                if (m_tagKeeper.applyTag(effect, true)) {
+                    m_dynamicTags.emplace_back(effect, rule->getPropertiesMask());
+                    result.tagsChanged = true;
+                }
                 break;
             }
             case WINDOW_RULE_EFFECT_MAX_SIZE: {
